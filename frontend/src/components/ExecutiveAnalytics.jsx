@@ -61,7 +61,7 @@ export default function ExecutiveAnalytics() {
         setPenalties(finesRes.data);
       })
       .catch((err) => {
-        setError("Unable to load executive analytics.");
+        setError("Unable to load library reports.");
         console.error("Analytics error:", err);
       })
       .finally(() => setLoading(false));
@@ -74,7 +74,7 @@ export default function ExecutiveAnalytics() {
   if (loading) {
     return (
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-500">
-        Loading executive scorecard metrics...
+        Loading library statistics...
       </div>
     );
   }
@@ -92,7 +92,7 @@ export default function ExecutiveAnalytics() {
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <BarChart3 className="w-6 h-6 text-indigo-400" />
-          <h2 className="text-xl font-bold tracking-wide">Executive Analytics Terminal</h2>
+          <h2 className="text-xl font-bold tracking-wide">Library Reports</h2>
         </div>
         <button
           onClick={fetchData}
@@ -106,30 +106,30 @@ export default function ExecutiveAnalytics() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           icon={BookOpen}
-          label="Total Assets"
+          label="Total Books"
           value={stats.totalAssets}
-          subtext={`${stats.availableAssets} available in catalog`}
+          subtext={`${stats.availableAssets} available on shelf`}
           accent="blue"
         />
         <MetricCard
           icon={BookOpen}
-          label="Active Check-Outs"
+          label="Books Checked Out"
           value={stats.checkedOutAssets}
           subtext={`${stats.checkoutRatio}% utilization rate`}
           accent="emerald"
         />
         <MetricCard
           icon={AlertCircle}
-          label="Overdue Assets"
+          label="Overdue Books"
           value={stats.overdueCount}
           subtext={`of ${stats.activeLoans} active loans`}
           accent="rose"
         />
         <MetricCard
           icon={CircleDollarSign}
-          label="Outstanding Penalties"
+          label="Unpaid Fines"
           value={`${stats.outstandingPenaltiesAmount} units`}
-          subtext={`${stats.outstandingPenaltiesCount} open records`}
+          subtext={`${stats.outstandingPenaltiesCount} open fine records`}
           accent="amber"
         />
       </div>
@@ -137,7 +137,7 @@ export default function ExecutiveAnalytics() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
           <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
-            Asset Check-Out Ratios
+            Book Checkout Summary
           </h3>
           <ProgressBar
             label="Checked Out"
@@ -161,18 +161,18 @@ export default function ExecutiveAnalytics() {
 
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
           <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4">
-            Outstanding Penalty Ledger
+            Outstanding Fines
           </h3>
           {penalties.length === 0 ? (
-            <p className="text-slate-500 text-sm">No outstanding penalty records.</p>
+            <p className="text-slate-500 text-sm">No unpaid fines on record.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-800 text-left text-slate-500 uppercase text-xs tracking-wider">
                     <th className="pb-3 pr-3">Record ID</th>
-                    <th className="pb-3 pr-3">Member</th>
-                    <th className="pb-3 pr-3">Penalty</th>
+                    <th className="pb-3 pr-3">Student ID</th>
+                    <th className="pb-3 pr-3">Fine</th>
                     <th className="pb-3">Status</th>
                   </tr>
                 </thead>

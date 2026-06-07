@@ -1,8 +1,8 @@
-# AuraLib Nexus
+# Smart College Library
 
-**Cloud-Native Knowledge Architecture** — a decoupled, full-stack library management platform built with React, Flask, and Google Cloud Firestore.
+**Campus Library Platform** — a full-stack Library Management System built with React, Flask, and Google Cloud Firestore. Engineering capstone project for campus library operations.
 
-AuraLib Nexus provides a production-oriented portal for catalog browsing, asset check-out/check-in workflows, penalty settlement, digital access pass generation, and executive analytics — all backed by a RESTful logic tier and a NoSQL persistence layer.
+Smart College Library helps students browse books, borrow and return titles, pay fines, and get QR exit passes. Librarians manage checkouts and returns; admins view simple usage reports.
 
 ---
 
@@ -38,7 +38,7 @@ AuraLib Nexus provides a production-oriented portal for catalog browsing, asset 
 ## Repository Structure
 
 ```
-auralib-nexus/
+library-system/
 ├── backend/
 │   ├── app.py                  # Flask REST API router
 │   ├── requirements.txt        # Python dependencies
@@ -252,13 +252,13 @@ Base URL: `http://127.0.0.1:5000` (configurable via `VITE_API_BASE`)
 
 ---
 
-## UI Perspectives
+## UI Views
 
-| Perspective | Modules |
-|-------------|---------|
-| **Member Console** | Live asset catalog · Digital access pass request |
-| **Operations Desk** | Check-out / check-in consoles · Active loan index · E-gate scanner simulator |
-| **Executive Analytics** | KPI scorecards · Utilization progress bars · Penalty ledger table |
+| View | Modules |
+|------|---------|
+| **Student Portal** | Book catalog · Library exit pass (QR) |
+| **Librarian Desk** | Issue / return books · Active loans · Gate scanner |
+| **Library Reports** | Checkout stats · Overdue books · Unpaid fines table |
 
 ---
 

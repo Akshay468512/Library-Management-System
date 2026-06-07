@@ -28,10 +28,10 @@ function App() {
       <header className="max-w-6xl mx-auto mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-800 pb-6">
         <div>
           <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 tracking-tight">
-            AuraLib Nexus
+            Smart College Library
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Cloud-Native Knowledge Architecture
+            Campus Library Platform — Library Management System
           </p>
         </div>
 

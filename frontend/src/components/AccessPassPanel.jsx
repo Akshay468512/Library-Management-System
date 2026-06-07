@@ -18,7 +18,7 @@ export default function AccessPassPanel() {
       .then((response) => setPassData(response.data))
       .catch((error) => {
         setErrorMessage(
-          error.response?.data?.message || "Unable to reach the access pass service."
+          error.response?.data?.message || "Could not generate exit pass. Try again."
         );
         console.error("Pass generation error:", error);
       })
@@ -29,19 +29,19 @@ export default function AccessPassPanel() {
     <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl h-fit">
       <div className="flex items-center gap-2 mb-6 border-b border-slate-800 pb-4">
         <QrCode className="w-6 h-6 text-indigo-400" />
-        <h2 className="text-xl font-bold tracking-wide">Digital Access Pass</h2>
+        <h2 className="text-xl font-bold tracking-wide">Library Exit Pass</h2>
       </div>
 
       <div className="space-y-4">
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-            Member Identifier
+            Student ID (USN)
           </label>
           <input
             type="text"
             value={memberId}
             onChange={(e) => setMemberId(e.target.value.toUpperCase())}
-            placeholder="Enter member ID"
+            placeholder="Enter USN or Student ID"
             className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 placeholder-slate-700 focus:outline-none focus:border-indigo-500 transition-colors font-mono tracking-wider"
           />
         </div>
@@ -51,7 +51,7 @@ export default function AccessPassPanel() {
           disabled={loading || !memberId.trim()}
           className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg hover:shadow-indigo-500/20 disabled:opacity-50 disabled:pointer-events-none tracking-wide uppercase text-sm"
         >
-          {loading ? "Validating Account..." : "Request Access Pass"}
+          {loading ? "Checking..." : "Generate Exit Pass"}
         </button>
 
         <div className="mt-6 pt-6 border-t border-slate-800">
@@ -72,12 +72,12 @@ export default function AccessPassPanel() {
               <div className="bg-white p-4 rounded-2xl inline-block shadow-2xl border border-slate-800 mx-auto transform hover:scale-105 transition-transform duration-200">
                 <img
                   src={passData.qr_code}
-                  alt="Digital access pass QR code"
+                  alt="Library exit pass QR code"
                   className="w-48 h-48"
                 />
               </div>
               <p className="text-xs text-slate-500 font-medium tracking-wide uppercase">
-                Present at secure exit terminal for verification
+                Show this QR code at the library gate
               </p>
             </div>
           )}

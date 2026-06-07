@@ -1,14 +1,14 @@
 const PERSPECTIVES = [
-  { value: "member", label: "Member Console" },
-  { value: "operations", label: "Operations Desk" },
-  { value: "executive", label: "Executive Analytics" },
+  { value: "member", label: "Student Portal" },
+  { value: "operations", label: "Librarian Desk" },
+  { value: "executive", label: "Library Reports" },
 ];
 
 export default function PerspectiveSelector({ activePerspective, onPerspectiveChange }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
       <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-        System Perspectives
+        View
       </span>
       <select
         value={activePerspective}

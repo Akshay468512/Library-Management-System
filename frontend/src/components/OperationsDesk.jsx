@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowRightLeft, RotateCcw, AlertTriangle, CheckCircle, X } from "lucide-react";
 import { api } from "../api";
 
-function PenaltyModal({ result, onClose }) {
+function FineModal({ result, onClose }) {
   if (!result) return null;
 
   return (
@@ -36,14 +36,14 @@ function PenaltyModal({ result, onClose }) {
               <span className="text-slate-500">Days overdue:</span> {result.daysOverdue}
             </p>
             <p className="text-amber-300 font-bold text-lg">
-              Penalty assessed: {result.penaltyAccumulated} units
+              Fine amount: {result.penaltyAccumulated} units
             </p>
             <p className="text-xs font-mono text-amber-400/70">
               Record ID: {result.fineId}
             </p>
           </div>
         ) : (
-          <p className="text-emerald-300 text-sm">No late penalties applied.</p>
+          <p className="text-emerald-300 text-sm">No late fines applied.</p>
         )}
 
         <button
@@ -135,39 +135,39 @@ export default function OperationsDesk({ onCatalogRefresh }) {
 
   return (
     <>
-      <PenaltyModal result={checkinModal} onClose={() => setCheckinModal(null)} />
+      <FineModal result={checkinModal} onClose={() => setCheckinModal(null)} />
 
       <div className="space-y-8">
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
             <div className="flex items-center gap-2 mb-6 border-b border-slate-800 pb-4">
               <ArrowRightLeft className="w-5 h-5 text-blue-400" />
-              <h3 className="text-lg font-bold">Check-Out Module</h3>
+              <h3 className="text-lg font-bold">Issue Book</h3>
             </div>
 
             <form onSubmit={handleCheckout} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-                  Member ID
+                  Student ID (USN)
                 </label>
                 <input
                   type="text"
                   value={memberId}
                   onChange={(e) => setMemberId(e.target.value.toUpperCase())}
-                  placeholder="Enter member identifier"
+                  placeholder="Enter USN or Student ID"
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 font-mono focus:outline-none focus:border-blue-500"
                   required
                 />
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-                  Asset Document ID
+                  Book ID
                 </label>
                 <input
                   type="text"
                   value={assetId}
                   onChange={(e) => setAssetId(e.target.value)}
-                  placeholder="Paste asset ID from catalog"
+                  placeholder="Paste book ID from catalog"
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 font-mono text-sm focus:outline-none focus:border-blue-500"
                   required
                 />
@@ -177,7 +177,7 @@ export default function OperationsDesk({ onCatalogRefresh }) {
                 disabled={checkoutLoading}
                 className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50 uppercase text-sm tracking-wide"
               >
-                {checkoutLoading ? "Processing..." : "Execute Check-Out"}
+                {checkoutLoading ? "Processing..." : "Issue Book"}
               </button>
             </form>
 
@@ -203,7 +203,7 @@ export default function OperationsDesk({ onCatalogRefresh }) {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
             <div className="flex items-center gap-2 mb-6 border-b border-slate-800 pb-4">
               <RotateCcw className="w-5 h-5 text-indigo-400" />
-              <h3 className="text-lg font-bold">Check-In Module</h3>
+              <h3 className="text-lg font-bold">Return Book</h3>
             </div>
 
             <div className="space-y-4">
@@ -241,7 +241,7 @@ export default function OperationsDesk({ onCatalogRefresh }) {
 
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold">Active Loan Index</h3>
+            <h3 className="text-lg font-bold">Active Loans</h3>
             <button
               onClick={fetchActiveLoans}
               className="text-xs text-slate-400 hover:text-white uppercase tracking-wider"
@@ -251,17 +251,17 @@ export default function OperationsDesk({ onCatalogRefresh }) {
           </div>
 
           {loansLoading ? (
-            <p className="text-slate-500 text-sm">Loading active loan records...</p>
+            <p className="text-slate-500 text-sm">Loading active loans...</p>
           ) : activeLoans.length === 0 ? (
-            <p className="text-slate-500 text-sm">No active check-outs on record.</p>
+            <p className="text-slate-500 text-sm">No books currently checked out.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-800 text-left text-slate-500 uppercase text-xs tracking-wider">
                     <th className="pb-3 pr-4">Transaction ID</th>
-                    <th className="pb-3 pr-4">Member ID</th>
-                    <th className="pb-3 pr-4">Asset ID</th>
+                    <th className="pb-3 pr-4">Student ID</th>
+                    <th className="pb-3 pr-4">Book ID</th>
                     <th className="pb-3 pr-4">Due Date</th>
                     <th className="pb-3">Action</th>
                   </tr>

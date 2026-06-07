@@ -85,8 +85,8 @@ def generate_gate_pass(member_id):
                     {
                         "status": "ERROR",
                         "message": (
-                            f"Access clearance denied. Outstanding penalties: {total_due} units. "
-                            "Settle all open fines before requesting a gate pass."
+                            f"Exit pass denied. Unpaid fines total: {total_due} units. "
+                            "Pay all fines before requesting an exit pass."
                         ),
                     }
                 ),
@@ -118,8 +118,8 @@ def generate_gate_pass(member_id):
                 {
                     "status": "SUCCESS",
                     "message": (
-                        f"Digital access pass issued for member {member_id}. "
-                        "Present this QR code at the secure exit terminal."
+                        f"Exit pass issued for student {member_id}. "
+                        "Show this QR code at the library gate."
                     ),
                     "qr_code": f"data:image/png;base64,{qr_base64}",
                     "token": token,
@@ -140,7 +140,7 @@ def verify_pass():
         token = (data.get("token") or "").strip()
 
         if not token:
-            return jsonify({"status": "ACCESS DENIED", "message": "No clearance token provided."}), 400
+            return jsonify({"status": "ACCESS DENIED", "message": "No QR token provided."}), 400
 
         passes = (
             db.collection("clearance_passes")
@@ -155,7 +155,7 @@ def verify_pass():
                 jsonify(
                     {
                         "status": "ACCESS DENIED",
-                        "message": "Token not recognized in clearance registry.",
+                        "message": "Token not found.",
                     }
                 ),
                 200,
@@ -181,7 +181,7 @@ def verify_pass():
             jsonify(
                 {
                     "status": "ACCESS GRANTED",
-                    "message": f"Secure exit authorized for member {pass_data.get('memberId')}.",
+                    "message": f"Library exit approved for student {pass_data.get('memberId')}.",
                     "memberId": pass_data.get("memberId"),
                 }
             ),
@@ -371,14 +371,14 @@ def pay_fine():
 
         fine_data = fine_doc.to_dict()
         if fine_data.get("status") == "paid":
-            return jsonify({"message": "Penalty already settled."}), 400
+            return jsonify({"message": "Fine already paid."}), 400
 
         fine_ref.update({"status": "paid", "paidAt": firestore.SERVER_TIMESTAMP})
 
         return (
             jsonify(
                 {
-                    "message": "Penalty settlement recorded.",
+                    "message": "Fine payment recorded.",
                     "fineId": fine_id,
                     "penaltyAccumulated": fine_data.get("penaltyAccumulated", 0),
                 }
@@ -387,7 +387,7 @@ def pay_fine():
         )
     except Exception as e:
         print(f"Error in pay_fine: {e}")
-        return jsonify({"message": "Settlement processing failed."}), 500
+        return jsonify({"message": "Payment failed."}), 500
 
 
 @app.route("/api/transactions", methods=["GET"])

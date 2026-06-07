@@ -5,12 +5,12 @@ export default function CatalogGrid({ assets }) {
     <section>
       <div className="flex items-center gap-2 mb-6">
         <BookOpen className="w-6 h-6 text-blue-400" />
-        <h2 className="text-xl font-bold tracking-wide">Live Asset Catalog</h2>
+        <h2 className="text-xl font-bold tracking-wide">Book Catalog</h2>
       </div>
 
       {assets.length === 0 ? (
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center text-slate-500">
-          No catalog assets found. Verify Firestore connectivity and ensure the API tier is online.
+          No books found. Check that the backend is running and Firestore is connected.
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -21,7 +21,7 @@ export default function CatalogGrid({ assets }) {
             >
               <div className="flex justify-between items-start gap-2 mb-3">
                 <h3 className="font-bold text-lg text-slate-100 line-clamp-1">
-                  {asset.title || "Untitled Asset"}
+                  {asset.title || "Untitled Book"}
                 </h3>
                 <span
                   className={`px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider shadow-inner ${
@@ -41,7 +41,7 @@ export default function CatalogGrid({ assets }) {
                 <span className="text-slate-600 font-medium">ISBN:</span> {asset.isbn || "N/A"}
               </p>
               <p className="text-slate-600 text-xs font-mono truncate">
-                Asset ID: {asset.id}
+                Book ID: {asset.id}
               </p>
             </div>
           ))}
