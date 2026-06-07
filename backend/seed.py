@@ -1,55 +1,61 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
 import datetime
+import hashlib
+import secrets
 
-# 1. Initialize Firebase Admin SDK
+def hash_password(password):
+    salt = secrets.token_hex(16)
+    hashed = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100000)
+    return f"{salt}${hashed.hex()}"
+
+# Initialize Firebase Connection
 try:
     cred = credentials.Certificate("serviceAccountKey.json")
     firebase_admin.initialize_app(cred)
 except ValueError:
-    pass  # Already initialized
+    pass  
 
 db = firestore.client()
 
-# 2. Sample data for campus library testing
-MOCK_BOOKS = [
-    {"title": "Introduction to Algorithms", "author": "T. Cormen", "isbn": "9780134093413", "isAvailable": True},
-    {"title": "Clean Code", "author": "R. Martin", "isbn": "9780132350884", "isAvailable": True},
-    {"title": "Operating System Concepts", "author": "A. Silberschatz", "isbn": "9780133805917", "isAvailable": False},
-    {"title": "Computer Networks", "author": "A. Tanenbaum", "isbn": "9780132126953", "isAvailable": True}
+# Clean, standard college library data sets
+CAMPUS_BOOKS = [
+    {"title": "Introduction to Algorithms", "author": "Thomas H. Cormen", "isbn": "9780262033848", "isAvailable": True},
+    {"title": "Database System Concepts", "author": "Abraham Silberschatz", "isbn": "9780073523323", "isAvailable": True},
+    {"title": "Computer Networks", "author": "Andrew S. Tanenbaum", "isbn": "9780132126953", "isAvailable": False},
+    {"title": "Software Engineering: A Practitioner's Approach", "author": "Roger S. Pressman", "isbn": "9780078022128", "isAvailable": True}
 ]
 
-MOCK_USERS = [
-    {"uid": "USR001", "name": "Alex Carter", "email": "alex.carter@campus.edu", "identifierCode": "1MS22CS001", "role": "member"},
-    {"uid": "USR002", "name": "Morgan Lee", "email": "morgan.lee@campus.edu", "identifierCode": "1MS22CS002", "role": "member"},
-    {"uid": "USR003", "name": "Jordan Smith", "email": "jordan.s@campus.edu", "identifierCode": "LIB-001", "role": "librarian"}
+CAMPUS_USERS = [
+    {"uid": "STU001", "name": "Rohan Sharma", "email": "rohan.s@student.edu", "usn": "1CD23CS010", "studentId": "1CD23CS010", "role": "student", "passwordHash": hash_password("student123")},
+    {"uid": "STU002", "name": "Sneha Reddy", "email": "sneha.r@student.edu", "usn": "1CD23CS045", "studentId": "1CD23CS045", "role": "student", "passwordHash": hash_password("student123")},
+    {"uid": "STU003", "name": "Prof. Amit Verma", "email": "amit.v@faculty.edu", "usn": "FACULTY01", "studentId": "FACULTY01", "role": "librarian", "passwordHash": hash_password("staff123")}
 ]
 
-def seed_database():
-    print("Starting library database seed...")
+def populate_library():
+    print("🚀 Starting campus database population...")
     
-    # Seed Books
-    print("Adding sample books...")
-    for book in MOCK_BOOKS:
-        # Use ISBN as Document ID to prevent duplicates
+    # 1. Add Books
+    print("📚 Adding books to inventory...")
+    for book in CAMPUS_BOOKS:
         db.collection("books").document(book["isbn"]).set(book)
         
-    # Seed Users
-    print("Adding sample student accounts...")
-    for user in MOCK_USERS:
+    # 2. Add Users
+    print("🎓 Adding student and staff profiles...")
+    for user in CAMPUS_USERS:
         db.collection("users").document(user["uid"]).set(user)
         
-    # Seed a mock unpaid fine for testing exit pass restrictions (1MS22CS002)
-    print("Adding sample fine record...")
-    fine_doc = {
-        "memberId": "1MS22CS002",
-        "amount": 120,
+    # 3. Add an Unpaid Fine for testing the E-Gate blocker logic
+    print("💰 Creating a sample fine record for testing...")
+    sample_fine = {
+        "studentId": "1CD23CS045",  # Sneha Reddy will be blocked due to this fine
+        "amount": 50,
         "status": "unpaid",
         "timestamp": datetime.datetime.utcnow()
     }
-    db.collection("fines").document("fine_mock_001").set(fine_doc)
+    db.collection("fines").document("test_fine_01").set(sample_fine)
 
-    print("Database seeded with sample campus library data.")
+    print("✅ Database successfully populated with standard campus data!")
 
 if __name__ == "__main__":
-    seed_database()
+    populate_library()

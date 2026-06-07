@@ -7,6 +7,8 @@ import io
 import base64
 import uuid
 import os
+import hashlib
+import secrets
 import traceback
 from datetime import datetime, timedelta, timezone
 
@@ -20,7 +22,63 @@ db = firestore.client()
 
 PENALTY_RATE_PER_DAY = int(os.environ.get("PENALTY_RATE_PER_DAY", "10"))
 LOAN_PERIOD_DAYS = int(os.environ.get("LOAN_PERIOD_DAYS", "14"))
-VALID_ROLES = ("member", "operator", "executive")
+VALID_ROLES = ("member", "operator", "executive", "student", "librarian")
+BORROWED_STATUSES = ("borrowed", "active")
+
+
+def hash_password(password):
+    salt = secrets.token_hex(16)
+    hashed = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100000)
+    return f"{salt}${hashed.hex()}"
+
+
+def verify_password(password, stored_hash):
+    if not stored_hash or "$" not in stored_hash:
+        return False
+    salt, expected = stored_hash.split("$", 1)
+    hashed = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100000)
+    return hashed.hex() == expected
+
+
+def user_response(user_doc):
+    data = user_doc.to_dict() or {}
+    return {
+        "id": user_doc.id,
+        "name": data.get("name"),
+        "email": data.get("email"),
+        "usn": data.get("usn") or data.get("studentId"),
+        "role": data.get("role", "student"),
+    }
+
+
+def find_book_ref(isbn):
+    isbn = (isbn or "").strip()
+    if not isbn:
+        return None, None
+
+    book_ref = db.collection("books").document(isbn)
+    book_doc = book_ref.get()
+    if book_doc.exists:
+        return book_ref, book_doc
+
+    matches = list(db.collection("books").where("isbn", "==", isbn).limit(1).stream())
+    if matches:
+        return matches[0].reference, matches[0]
+
+    return None, None
+
+
+def active_borrow_for_student(student_id, isbn=None):
+    student_id = (student_id or "").strip().upper()
+    results = []
+    for doc in db.collection("transactions").where("studentId", "==", student_id).stream():
+        data = doc.to_dict() or {}
+        if data.get("status") not in BORROWED_STATUSES:
+            continue
+        if isbn and data.get("isbn") != isbn:
+            continue
+        results.append(doc)
+    return results
 
 
 def serialize_doc(doc):
@@ -192,6 +250,93 @@ def verify_pass():
         return jsonify({"status": "ACCESS DENIED", "message": "Verification service unavailable."}), 500
 
 
+@app.route("/api/auth/register", methods=["POST"])
+def register():
+    try:
+        data = request.get_json() or {}
+        name = (data.get("name") or "").strip()
+        email = (data.get("email") or "").strip().lower()
+        usn = (data.get("usn") or "").strip().upper()
+        password = data.get("password") or ""
+
+        if not all([name, email, usn, password]):
+            return jsonify({"message": "Name, email, USN, and password are required."}), 400
+
+        if len(password) < 6:
+            return jsonify({"message": "Password must be at least 6 characters."}), 400
+
+        if next(db.collection("users").where("usn", "==", usn).limit(1).stream(), None):
+            return jsonify({"message": "This USN is already registered."}), 409
+
+        if next(db.collection("users").where("email", "==", email).limit(1).stream(), None):
+            return jsonify({"message": "This email is already registered."}), 409
+
+        user_ref = db.collection("users").document()
+        user_ref.set(
+            {
+                "name": name,
+                "email": email,
+                "usn": usn,
+                "studentId": usn,
+                "role": "student",
+                "passwordHash": hash_password(password),
+                "createdAt": firestore.SERVER_TIMESTAMP,
+            }
+        )
+
+        return (
+            jsonify(
+                {
+                    "message": "Registration successful.",
+                    "user": user_response(user_ref.get()),
+                }
+            ),
+            201,
+        )
+    except Exception as e:
+        print(f"Error in register: {e}")
+        return jsonify({"message": "Registration failed."}), 500
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def login():
+    try:
+        data = request.get_json() or {}
+        email = (data.get("email") or "").strip().lower()
+        usn = (data.get("usn") or "").strip().upper()
+        password = data.get("password") or ""
+
+        if not password or (not email and not usn):
+            return jsonify({"message": "Email or USN and password are required."}), 400
+
+        if email:
+            matches = list(db.collection("users").where("email", "==", email).limit(1).stream())
+        else:
+            matches = list(db.collection("users").where("usn", "==", usn).limit(1).stream())
+
+        if not matches:
+            return jsonify({"message": "Invalid email/USN or password."}), 401
+
+        user_doc = matches[0]
+        user_data = user_doc.to_dict() or {}
+
+        if not verify_password(password, user_data.get("passwordHash", "")):
+            return jsonify({"message": "Invalid email/USN or password."}), 401
+
+        return (
+            jsonify(
+                {
+                    "message": "Login successful.",
+                    "user": user_response(user_doc),
+                }
+            ),
+            200,
+        )
+    except Exception as e:
+        print(f"Error in login: {e}")
+        return jsonify({"message": "Login failed."}), 500
+
+
 @app.route("/api/auth/register-profile", methods=["POST"])
 def register_profile():
     try:
@@ -224,6 +369,168 @@ def register_profile():
     except Exception as e:
         print(f"Error in register_profile: {e}")
         return jsonify({"message": "Failed to register profile."}), 500
+
+
+@app.route("/api/books/borrow", methods=["POST"])
+def borrow_book():
+    try:
+        data = request.get_json() or {}
+        student_id = (data.get("studentId") or data.get("usn") or "").strip().upper()
+        isbn = (data.get("isbn") or "").strip()
+
+        if not student_id or not isbn:
+            return jsonify({"message": "studentId (USN) and isbn are required."}), 400
+
+        book_ref, book_doc = find_book_ref(isbn)
+        if not book_doc:
+            return jsonify({"message": "Book not found."}), 404
+
+        book_isbn = (book_doc.to_dict() or {}).get("isbn") or book_doc.id
+        if active_borrow_for_student(student_id, book_isbn):
+            return jsonify({"message": "You already borrowed this book."}), 400
+
+        book_data = book_doc.to_dict() or {}
+        if not book_data.get("isAvailable", False):
+            return jsonify({"message": "This book is not available right now."}), 400
+
+        now = datetime.now(timezone.utc)
+        due_date = now + timedelta(days=LOAN_PERIOD_DAYS)
+        transaction_ref = db.collection("transactions").document()
+
+        batch = db.batch()
+        batch.set(
+            transaction_ref,
+            {
+                "studentId": student_id,
+                "isbn": book_isbn,
+                "borrowDate": now,
+                "dueDate": due_date,
+                "status": "borrowed",
+            },
+        )
+        batch.update(book_ref, {"isAvailable": False})
+        batch.commit()
+
+        return (
+            jsonify(
+                {
+                    "message": "Book borrowed successfully.",
+                    "transactionId": transaction_ref.id,
+                    "dueDate": due_date.isoformat(),
+                }
+            ),
+            201,
+        )
+    except Exception as e:
+        print(f"Error in borrow_book: {e}")
+        return jsonify({"message": "Could not borrow book."}), 500
+
+
+@app.route("/api/books/return", methods=["POST"])
+def return_book():
+    try:
+        data = request.get_json() or {}
+        student_id = (data.get("studentId") or data.get("usn") or "").strip().upper()
+        isbn = (data.get("isbn") or "").strip()
+
+        if not student_id or not isbn:
+            return jsonify({"message": "studentId (USN) and isbn are required."}), 400
+
+        book_ref, book_doc = find_book_ref(isbn)
+        if not book_doc:
+            return jsonify({"message": "Book not found."}), 404
+
+        book_isbn = (book_doc.to_dict() or {}).get("isbn") or book_doc.id
+        active_loans = active_borrow_for_student(student_id, book_isbn)
+        if not active_loans:
+            return jsonify({"message": "You do not have this book checked out."}), 404
+
+        transaction_doc = active_loans[0]
+        transaction_data = transaction_doc.to_dict() or {}
+        now = datetime.now(timezone.utc)
+        due_date = transaction_data.get("dueDate")
+        fine_amount = 0
+        days_late = 0
+
+        if due_date:
+            if due_date.tzinfo is None:
+                due_date = due_date.replace(tzinfo=timezone.utc)
+            if now > due_date:
+                days_late = max((now - due_date).days, 1)
+                fine_amount = days_late * PENALTY_RATE_PER_DAY
+
+        batch = db.batch()
+        batch.update(
+            transaction_doc.reference,
+            {"status": "returned", "returnDate": now},
+        )
+        batch.update(book_ref, {"isAvailable": True})
+
+        fine_id = None
+        if fine_amount > 0:
+            fine_ref = db.collection("fines").document()
+            fine_id = fine_ref.id
+            batch.set(
+                fine_ref,
+                {
+                    "studentId": student_id,
+                    "isbn": book_isbn,
+                    "transactionId": transaction_doc.id,
+                    "amount": fine_amount,
+                    "daysOverdue": days_late,
+                    "status": "unpaid",
+                    "createdAt": firestore.SERVER_TIMESTAMP,
+                },
+            )
+
+        batch.commit()
+
+        message = "Book returned successfully."
+        if fine_amount > 0:
+            message = f"Book returned. Late fine: ₹{fine_amount} ({days_late} day(s) overdue)."
+
+        response = {
+            "message": message,
+            "fineApplied": fine_amount > 0,
+            "fineAmount": fine_amount,
+            "daysLate": days_late,
+        }
+        if fine_id:
+            response["fineId"] = fine_id
+
+        return jsonify(response), 200
+    except Exception as e:
+        print(f"Error in return_book: {e}")
+        return jsonify({"message": "Could not return book."}), 500
+
+
+@app.route("/api/books/my-borrowed", methods=["GET"])
+def my_borrowed_books():
+    try:
+        student_id = (request.args.get("studentId") or request.args.get("usn") or "").strip().upper()
+        if not student_id:
+            return jsonify({"message": "studentId (USN) is required."}), 400
+
+        borrowed = []
+        for doc in db.collection("transactions").where("studentId", "==", student_id).stream():
+            data = doc.to_dict() or {}
+            if data.get("status") not in BORROWED_STATUSES:
+                continue
+
+            entry = serialize_doc(doc)
+            isbn = data.get("isbn")
+            if isbn:
+                _, book_doc = find_book_ref(isbn)
+                if book_doc:
+                    book = book_doc.to_dict() or {}
+                    entry["title"] = book.get("title")
+                    entry["author"] = book.get("author")
+            borrowed.append(entry)
+
+        return jsonify(borrowed), 200
+    except Exception as e:
+        print(f"Error in my_borrowed_books: {e}")
+        return jsonify({"message": "Could not load borrowed books."}), 500
 
 
 @app.route("/api/transactions/issue", methods=["POST"])
@@ -422,14 +729,18 @@ def get_analytics():
         checked_out = sum(1 for asset in assets if not asset.to_dict().get("isAvailable", True))
         available = total_assets - checked_out
 
-        active_loans = list(
-            db.collection("transactions").where("status", "==", "active").stream()
-        )
+        active_loans = []
+        for loan in db.collection("transactions").stream():
+            status = (loan.to_dict() or {}).get("status")
+            if status in BORROWED_STATUSES:
+                active_loans.append(loan)
+
         now = datetime.now(timezone.utc)
         overdue_count = 0
 
         for loan in active_loans:
-            due_timestamp = loan.to_dict().get("dueTimestamp")
+            loan_data = loan.to_dict() or {}
+            due_timestamp = loan_data.get("dueDate") or loan_data.get("dueTimestamp")
             if due_timestamp:
                 if due_timestamp.tzinfo is None:
                     due_timestamp = due_timestamp.replace(tzinfo=timezone.utc)
@@ -437,9 +748,7 @@ def get_analytics():
                     overdue_count += 1
 
         unpaid_fines = list(db.collection("fines").where("status", "==", "unpaid").stream())
-        outstanding_amount = sum(
-            doc.to_dict().get("penaltyAccumulated", 0) for doc in unpaid_fines
-        )
+        outstanding_amount = sum(_penalty_amount(doc.to_dict()) for doc in unpaid_fines)
         outstanding_count = len(unpaid_fines)
         checkout_ratio = round((checked_out / total_assets) * 100, 1) if total_assets else 0
 

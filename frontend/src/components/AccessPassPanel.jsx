@@ -1,12 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { QrCode, ShieldAlert, CheckCircle } from "lucide-react";
 import { api } from "../api";
 
-export default function AccessPassPanel() {
-  const [memberId, setMemberId] = useState("");
+export default function AccessPassPanel({ user }) {
+  const [memberId, setMemberId] = useState(user?.usn || "");
   const [passData, setPassData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    if (user?.usn) {
+      setMemberId(user.usn);
+    }
+  }, [user?.usn]);
 
   const handleGeneratePass = () => {
     setLoading(true);
